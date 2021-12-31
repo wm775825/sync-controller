@@ -22,7 +22,7 @@ import (
 	"context"
 	"time"
 
-	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/simage/v1alpha1"
+	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/serverless/v1alpha1"
 	scheme "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -64,7 +64,7 @@ func newSimages(c *ServerlessV1alpha1Client, namespace string) *simages {
 	}
 }
 
-// Get takes name of the simage, and returns the corresponding simage object, and an error if there is any.
+// Get takes name of the serverless, and returns the corresponding serverless object, and an error if there is any.
 func (c *simages) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Simage, err error) {
 	result = &v1alpha1.Simage{}
 	err = c.client.Get().
@@ -109,7 +109,7 @@ func (c *simages) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interfa
 		Watch(ctx)
 }
 
-// Create takes the representation of a simage and creates it.  Returns the server's representation of the simage, and an error, if there is any.
+// Create takes the representation of a serverless and creates it.  Returns the server's representation of the serverless, and an error, if there is any.
 func (c *simages) Create(ctx context.Context, simage *v1alpha1.Simage, opts v1.CreateOptions) (result *v1alpha1.Simage, err error) {
 	result = &v1alpha1.Simage{}
 	err = c.client.Post().
@@ -122,7 +122,7 @@ func (c *simages) Create(ctx context.Context, simage *v1alpha1.Simage, opts v1.C
 	return
 }
 
-// Update takes the representation of a simage and updates it. Returns the server's representation of the simage, and an error, if there is any.
+// Update takes the representation of a serverless and updates it. Returns the server's representation of the serverless, and an error, if there is any.
 func (c *simages) Update(ctx context.Context, simage *v1alpha1.Simage, opts v1.UpdateOptions) (result *v1alpha1.Simage, err error) {
 	result = &v1alpha1.Simage{}
 	err = c.client.Put().
@@ -152,7 +152,7 @@ func (c *simages) UpdateStatus(ctx context.Context, simage *v1alpha1.Simage, opt
 	return
 }
 
-// Delete takes name of the simage and deletes it. Returns an error if one occurs.
+// Delete takes name of the serverless and deletes it. Returns an error if one occurs.
 func (c *simages) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
@@ -179,7 +179,7 @@ func (c *simages) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, l
 		Error()
 }
 
-// Patch applies the patch and returns the patched simage.
+// Patch applies the patch and returns the patched serverless.
 func (c *simages) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Simage, err error) {
 	result = &v1alpha1.Simage{}
 	err = c.client.Patch(pt).

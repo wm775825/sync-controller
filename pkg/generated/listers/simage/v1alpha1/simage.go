@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/simage/v1alpha1"
+	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/serverless/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -88,7 +88,7 @@ func (s simageNamespaceLister) Get(name string) (*v1alpha1.Simage, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("simage"), name)
+		return nil, errors.NewNotFound(v1alpha1.Resource("serverless"), name)
 	}
 	return obj.(*v1alpha1.Simage), nil
 }

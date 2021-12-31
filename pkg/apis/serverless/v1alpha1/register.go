@@ -5,12 +5,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/wm775825/sync-controller/pkg/apis/simage"
+	"github.com/wm775825/sync-controller/pkg/apis/serverless"
 )
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{
-	Group: simage.GroupName,
+	Group:   serverless.GroupName,
 	Version: "v1alpha1",
 }
 

@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/simage/v1alpha1"
+	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/serverless/v1alpha1"
 	"github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )

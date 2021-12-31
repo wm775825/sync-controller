@@ -22,7 +22,7 @@ import (
 	"context"
 	time "time"
 
-	simagev1alpha1 "github.com/wm775825/sync-controller/pkg/apis/simage/v1alpha1"
+	simagev1alpha1 "github.com/wm775825/sync-controller/pkg/apis/serverless/v1alpha1"
 	versioned "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/internalinterfaces"
 	v1alpha1 "github.com/wm775825/sync-controller/pkg/generated/listers/simage/v1alpha1"

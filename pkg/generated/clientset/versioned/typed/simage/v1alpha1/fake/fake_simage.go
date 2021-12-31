@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/simage/v1alpha1"
+	v1alpha1 "github.com/wm775825/sync-controller/pkg/apis/serverless/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -40,7 +40,7 @@ var simagesResource = schema.GroupVersionResource{Group: "serverless.wm775825.in
 
 var simagesKind = schema.GroupVersionKind{Group: "serverless.wm775825.info", Version: "v1alpha1", Kind: "Simage"}
 
-// Get takes name of the simage, and returns the corresponding simage object, and an error if there is any.
+// Get takes name of the serverless, and returns the corresponding serverless object, and an error if there is any.
 func (c *FakeSimages) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Simage, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(simagesResource, c.ns, name), &v1alpha1.Simage{})
@@ -80,7 +80,7 @@ func (c *FakeSimages) Watch(ctx context.Context, opts v1.ListOptions) (watch.Int
 
 }
 
-// Create takes the representation of a simage and creates it.  Returns the server's representation of the simage, and an error, if there is any.
+// Create takes the representation of a serverless and creates it.  Returns the server's representation of the serverless, and an error, if there is any.
 func (c *FakeSimages) Create(ctx context.Context, simage *v1alpha1.Simage, opts v1.CreateOptions) (result *v1alpha1.Simage, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(simagesResource, c.ns, simage), &v1alpha1.Simage{})
@@ -91,7 +91,7 @@ func (c *FakeSimages) Create(ctx context.Context, simage *v1alpha1.Simage, opts 
 	return obj.(*v1alpha1.Simage), err
 }
 
-// Update takes the representation of a simage and updates it. Returns the server's representation of the simage, and an error, if there is any.
+// Update takes the representation of a serverless and updates it. Returns the server's representation of the serverless, and an error, if there is any.
 func (c *FakeSimages) Update(ctx context.Context, simage *v1alpha1.Simage, opts v1.UpdateOptions) (result *v1alpha1.Simage, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(simagesResource, c.ns, simage), &v1alpha1.Simage{})
@@ -114,7 +114,7 @@ func (c *FakeSimages) UpdateStatus(ctx context.Context, simage *v1alpha1.Simage,
 	return obj.(*v1alpha1.Simage), err
 }
 
-// Delete takes name of the simage and deletes it. Returns an error if one occurs.
+// Delete takes name of the serverless and deletes it. Returns an error if one occurs.
 func (c *FakeSimages) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(simagesResource, c.ns, name), &v1alpha1.Simage{})
@@ -130,7 +130,7 @@ func (c *FakeSimages) DeleteCollection(ctx context.Context, opts v1.DeleteOption
 	return err
 }
 
-// Patch applies the patch and returns the patched simage.
+// Patch applies the patch and returns the patched serverless.
 func (c *FakeSimages) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Simage, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(simagesResource, c.ns, name, pt, data, subresources...), &v1alpha1.Simage{})

@@ -1,7 +1,7 @@
 apiVersion: serverless.wm775825.info/v1alpha1
 kind: Simage
 metadata:
-  name: example-simage
+  name: example-serverless
   labels:
     app: serverless
 spec:
