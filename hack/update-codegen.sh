@@ -25,7 +25,7 @@ set -o pipefail
 $(pwd)/vendor/k8s.io/code-generator/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/wm775825/sync-controller/pkg/generated \
   github.com/wm775825/sync-controller/pkg/apis \
-  simage:v1alpha1 \
+  serverless:v1alpha1 \
   --output-base "$(pwd)/../../../" \
   --go-header-file $(pwd)/hack/boilerplate.go.txt \
   -v 10
