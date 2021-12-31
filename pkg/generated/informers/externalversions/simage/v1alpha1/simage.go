@@ -20,12 +20,12 @@ package v1alpha1
 
 import (
 	"context"
-	internalinterfaces "pkg/generated/informers/externalversions/internalinterfaces"
 	time "time"
 
-	simagev1alpha1 "./pkg/apis/simage/v1alpha1"
-	versioned "./pkg/generated/clientset/versioned"
-	v1alpha1 "./pkg/generated/listers/simage/v1alpha1"
+	simagev1alpha1 "github.com/wm775825/sync-controller/pkg/apis/simage/v1alpha1"
+	versioned "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
+	internalinterfaces "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/wm775825/sync-controller/pkg/generated/listers/simage/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

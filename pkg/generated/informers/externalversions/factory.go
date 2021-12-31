@@ -19,13 +19,13 @@ limitations under the License.
 package externalversions
 
 import (
-	internalinterfaces "pkg/generated/informers/externalversions/internalinterfaces"
-	simage "pkg/generated/informers/externalversions/simage"
 	reflect "reflect"
 	sync "sync"
 	time "time"
 
-	versioned "./pkg/generated/clientset/versioned"
+	versioned "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
+	internalinterfaces "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/internalinterfaces"
+	simage "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/simage"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

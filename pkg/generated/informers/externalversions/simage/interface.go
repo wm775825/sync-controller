@@ -19,8 +19,8 @@ limitations under the License.
 package simage
 
 import (
-	internalinterfaces "pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "pkg/generated/informers/externalversions/simage/v1alpha1"
+	internalinterfaces "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/simage/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.
