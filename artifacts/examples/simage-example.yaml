@@ -1,0 +1,16 @@
+apiVersion: serverless.wm775825.info/v1alpha1
+kind: Simage
+metadata:
+  name: example-simage
+  labels:
+    app: serverless
+spec:
+  registries:
+    - "192.168.1.141:5000"
+    - "192.168.1.117:5000"
+
+  # TODO: optional specs
+#  sha256: "123456789"
+#  layers:
+#    - layer1: "xxx"
+#    - layer2: "xxx"
