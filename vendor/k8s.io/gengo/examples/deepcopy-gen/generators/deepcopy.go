@@ -29,7 +29,7 @@ import (
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 )
 
 // CustomArgs is used tby the go2idl framework to pass args specific to this
@@ -864,8 +864,6 @@ func (g *genDeepCopy) doStruct(t *types.Type, sw *generator.SnippetWriter) {
 			sw.Do("in, out := &in.$.name$, &out.$.name$\n", args)
 			g.generateFor(ft, sw)
 			sw.Do("}\n", nil)
-		case uft.Kind == types.Array:
-			sw.Do("out.$.name$ = in.$.name$\n", args)
 		case uft.Kind == types.Struct:
 			if ft.IsAssignable() {
 				sw.Do("out.$.name$ = in.$.name$\n", args)

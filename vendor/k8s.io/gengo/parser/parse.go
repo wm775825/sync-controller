@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/build"
-	"go/constant"
 	"go/parser"
 	"go/token"
 	tc "go/types"
@@ -29,12 +28,11 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
 	"k8s.io/gengo/types"
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 )
 
 // This clarifies when a pkg path has been canonicalized.
@@ -336,13 +334,6 @@ func (b *Builder) addDir(dir string, userRequested bool) error {
 	return nil
 }
 
-// regexErrPackageNotFound helps test the expected error for not finding a package.
-var regexErrPackageNotFound = regexp.MustCompile(`^unable to import ".*?":.*`)
-
-func isErrPackageNotFound(err error) bool {
-	return regexErrPackageNotFound.MatchString(err.Error())
-}
-
 // importPackage is a function that will be called by the type check package when it
 // needs to import a go package. 'path' is the import path.
 func (b *Builder) importPackage(dir string, userRequested bool) (*tc.Package, error) {
@@ -365,11 +356,6 @@ func (b *Builder) importPackage(dir string, userRequested bool) (*tc.Package, er
 
 		// Add it.
 		if err := b.addDir(dir, userRequested); err != nil {
-			if isErrPackageNotFound(err) {
-				klog.V(6).Info(err)
-				return nil, nil
-			}
-
 			return nil, err
 		}
 
@@ -493,19 +479,6 @@ func (b *Builder) FindTypes() (types.Universe, error) {
 	return u, nil
 }
 
-// addCommentsToType takes any accumulated comment lines prior to obj and
-// attaches them to the type t.
-func (b *Builder) addCommentsToType(obj tc.Object, t *types.Type) {
-	c1 := b.priorCommentLines(obj.Pos(), 1)
-	// c1.Text() is safe if c1 is nil
-	t.CommentLines = splitLines(c1.Text())
-	if c1 == nil {
-		t.SecondClosestCommentLines = splitLines(b.priorCommentLines(obj.Pos(), 2).Text())
-	} else {
-		t.SecondClosestCommentLines = splitLines(b.priorCommentLines(c1.List[0].Slash, 2).Text())
-	}
-}
-
 // findTypesIn finalizes the package import and searches through the package
 // for types.
 func (b *Builder) findTypesIn(pkgPath importPathString, u *types.Universe) error {
@@ -549,23 +522,35 @@ func (b *Builder) findTypesIn(pkgPath importPathString, u *types.Universe) error
 		tn, ok := obj.(*tc.TypeName)
 		if ok {
 			t := b.walkType(*u, nil, tn.Type())
-			b.addCommentsToType(obj, t)
+			c1 := b.priorCommentLines(obj.Pos(), 1)
+			// c1.Text() is safe if c1 is nil
+			t.CommentLines = splitLines(c1.Text())
+			if c1 == nil {
+				t.SecondClosestCommentLines = splitLines(b.priorCommentLines(obj.Pos(), 2).Text())
+			} else {
+				t.SecondClosestCommentLines = splitLines(b.priorCommentLines(c1.List[0].Slash, 2).Text())
+			}
 		}
 		tf, ok := obj.(*tc.Func)
 		// We only care about functions, not concrete/abstract methods.
 		if ok && tf.Type() != nil && tf.Type().(*tc.Signature).Recv() == nil {
 			t := b.addFunction(*u, nil, tf)
-			b.addCommentsToType(obj, t)
+			c1 := b.priorCommentLines(obj.Pos(), 1)
+			// c1.Text() is safe if c1 is nil
+			t.CommentLines = splitLines(c1.Text())
+			if c1 == nil {
+				t.SecondClosestCommentLines = splitLines(b.priorCommentLines(obj.Pos(), 2).Text())
+			} else {
+				t.SecondClosestCommentLines = splitLines(b.priorCommentLines(c1.List[0].Slash, 2).Text())
+			}
 		}
 		tv, ok := obj.(*tc.Var)
 		if ok && !tv.IsField() {
-			t := b.addVariable(*u, nil, tv)
-			b.addCommentsToType(obj, t)
+			b.addVariable(*u, nil, tv)
 		}
 		tconst, ok := obj.(*tc.Const)
 		if ok {
-			t := b.addConstant(*u, nil, tconst)
-			b.addCommentsToType(obj, t)
+			b.addConstant(*u, nil, tconst)
 		}
 	}
 
@@ -592,7 +577,7 @@ func (b *Builder) importWithMode(dir string, mode build.ImportMode) (*build.Pack
 	if err != nil {
 		return nil, fmt.Errorf("unable to get current directory: %v", err)
 	}
-	buildPkg, err := b.context.Import(filepath.ToSlash(dir), cwd, mode)
+	buildPkg, err := b.context.Import(dir, cwd, mode)
 	if err != nil {
 		return nil, err
 	}
@@ -723,7 +708,8 @@ func (b *Builder) walkType(u types.Universe, useName *types.Name, in tc.Type) *t
 		}
 		out.Kind = types.Array
 		out.Elem = b.walkType(u, nil, t.Elem())
-		out.Len = in.(*tc.Array).Len()
+		// TODO: need to store array length, otherwise raw type name
+		// cannot be properly written.
 		return out
 	case *tc.Chan:
 		out := u.Type(name)
@@ -764,11 +750,7 @@ func (b *Builder) walkType(u types.Universe, useName *types.Name, in tc.Type) *t
 			if out.Methods == nil {
 				out.Methods = map[string]*types.Type{}
 			}
-			method := t.Method(i)
-			name := tcNameToName(method.String())
-			mt := b.walkType(u, &name, method.Type())
-			mt.CommentLines = splitLines(b.priorCommentLines(method.Pos(), 1).Text())
-			out.Methods[method.Name()] = mt
+			out.Methods[t.Method(i).Name()] = b.walkType(u, nil, t.Method(i).Type())
 		}
 		return out
 	case *tc.Named:
@@ -801,8 +783,7 @@ func (b *Builder) walkType(u types.Universe, useName *types.Name, in tc.Type) *t
 					out.Methods = map[string]*types.Type{}
 				}
 				method := t.Method(i)
-				name := tcNameToName(method.String())
-				mt := b.walkType(u, &name, method.Type())
+				mt := b.walkType(u, nil, method.Type())
 				mt.CommentLines = splitLines(b.priorCommentLines(method.Pos(), 1).Text())
 				out.Methods[method.Name()] = mt
 			}
@@ -849,22 +830,6 @@ func (b *Builder) addConstant(u types.Universe, useName *types.Name, in *tc.Cons
 	out := u.Constant(name)
 	out.Kind = types.DeclarationOf
 	out.Underlying = b.walkType(u, nil, in.Type())
-
-	var constval string
-
-	// For strings, we use `StringVal()` to get the un-truncated,
-	// un-quoted string. For other values, `.String()` is preferable to
-	// get something relatively human readable (especially since for
-	// floating point types, `ExactString()` will generate numeric
-	// expressions using `big.(*Float).Text()`.
-	switch in.Val().Kind() {
-	case constant.String:
-		constval = constant.StringVal(in.Val())
-	default:
-		constval = in.Val().String()
-	}
-
-	out.ConstValue = &constval
 	return out
 }
 
