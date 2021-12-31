@@ -23,7 +23,8 @@ set -o pipefail
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 $(pwd)/vendor/k8s.io/code-generator/generate-groups.sh "deepcopy,client,informer,lister" \
-  ./pkg/generated ./pkg/apis \
+  github.com/wm775825/sync-controller/pkg/generated \
+  github.com/wm775825/sync-controller/pkg/apis \
   simage:v1alpha1 \
   --output-base "$(pwd)/" \
   --go-header-file $(pwd)/hack/boilerplate.go.txt \
