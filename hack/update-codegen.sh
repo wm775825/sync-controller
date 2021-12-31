@@ -26,6 +26,6 @@ $(pwd)/vendor/k8s.io/code-generator/generate-groups.sh "deepcopy,client,informer
   github.com/wm775825/sync-controller/pkg/generated \
   github.com/wm775825/sync-controller/pkg/apis \
   simage:v1alpha1 \
-  --output-base "$(pwd)/" \
+  --output-base "$(pwd)/../../../" \
   --go-header-file $(pwd)/hack/boilerplate.go.txt \
   -v 10
