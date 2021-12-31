@@ -25,7 +25,7 @@ import (
 
 	versioned "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/internalinterfaces"
-	simage "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/simage"
+	serverless "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/serverless"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Serverless() simage.Interface
+	Serverless() serverless.Interface
 }
 
-func (f *sharedInformerFactory) Serverless() simage.Interface {
-	return simage.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Serverless() serverless.Interface {
+	return serverless.New(f, f.namespace, f.tweakListOptions)
 }

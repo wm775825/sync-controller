@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
-	serverlessv1alpha1 "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/typed/simage/v1alpha1"
-	fakeserverlessv1alpha1 "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/typed/simage/v1alpha1/fake"
+	serverlessv1alpha1 "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/typed/serverless/v1alpha1"
+	fakeserverlessv1alpha1 "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/typed/serverless/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

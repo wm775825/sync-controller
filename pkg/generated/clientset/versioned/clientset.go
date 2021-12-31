@@ -21,7 +21,7 @@ package versioned
 import (
 	"fmt"
 
-	serverlessv1alpha1 "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/typed/simage/v1alpha1"
+	serverlessv1alpha1 "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/typed/serverless/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
