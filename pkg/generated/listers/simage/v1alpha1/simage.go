@@ -26,10 +26,8 @@ import (
 )
 
 // SimageLister helps list Simages.
-// All objects returned here must be treated as read-only.
 type SimageLister interface {
 	// List lists all Simages in the indexer.
-	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Simage, err error)
 	// Simages returns an object that can list and get Simages.
 	Simages(namespace string) SimageNamespaceLister
@@ -60,13 +58,10 @@ func (s *simageLister) Simages(namespace string) SimageNamespaceLister {
 }
 
 // SimageNamespaceLister helps list and get Simages.
-// All objects returned here must be treated as read-only.
 type SimageNamespaceLister interface {
 	// List lists all Simages in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Simage, err error)
 	// Get retrieves the Simage from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Simage, error)
 	SimageNamespaceListerExpansion
 }
