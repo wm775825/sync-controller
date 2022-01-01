@@ -16,14 +16,21 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"math/rand"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
 const (
 	controllerAgentName = "serverless-controller"
-	listenAddr = "/tmp/server.sock"
+	unixSock = "/tmp/server.sock"
+	registrySubNet = "192.168.1"
+	registryPort = "5000"
+	defaultNamespace = "wm775825"
+	defaultRegistryUrl = "192.168.1.141:5000"
 )
 
 type Controller struct {
@@ -60,9 +67,7 @@ func NewController(
 		simageLister: simageInformer.Lister(),
 		simagesSyced: simageInformer.Informer().HasSynced,
 		recorder: recorder,
-		server: &http.Server{
-			Addr: listenAddr,
-		},
+		server: &http.Server{},
 	}
 
 	klog.Infof("Sync controller init.")
@@ -80,7 +85,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 	klog.Info("Start sync local images periodically")
 	go wait.Until(c.syncLocalImages, 10 * time.Second, stopCh)
 
-	klog.Info("Start listening at")
+	klog.Info("Start listening and serving")
 	go wait.Until(c.listenAndServe, 10 * time.Second, stopCh)
 
 	<-stopCh
@@ -95,11 +100,18 @@ func (c *Controller) listenAndServe() {
 		}
 	}()
 
+	if err := os.Remove(unixSock); err != nil {
+		utilruntime.HandleError(err)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/", http.HandlerFunc(c.handleQuery))
 	c.server.Handler = mux
 
-	listener, err := net.Listen("unix", c.server.Addr)
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{
+		Name: unixSock,
+		Net: "unix",
+	})
 	if err != nil {
 		utilruntime.HandleError(err)
 	}
@@ -110,9 +122,34 @@ func (c *Controller) listenAndServe() {
 }
 
 func (c *Controller) handleQuery(w http.ResponseWriter, req *http.Request) {
-	// TODO: handle query
+	registryUrl := c.getRegistryUrlByImage(req.URL.Path[1:])
+	w.WriteHeader(200)
+	_, _ = w.Write([]byte(registryUrl))
+}
+
+func (c *Controller) getRegistryUrlByImage(imageId string) string {
+	image, err := c.simageLister.Simages(defaultNamespace).Get(imageId)
+	if err != nil {
+		// TODO: how to deal with error
+		utilruntime.HandleError(err)
+		return defaultRegistryUrl
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	registries := image.Spec.Registries
+	return registries[rand.Intn(len(registries))]
 }
 
 func (c *Controller) syncLocalImages() {
 
+}
+
+func getLocalIp() string {
+	ipAddrs, _ := net.InterfaceAddrs()
+	for _, addr := range ipAddrs {
+		if strings.Contains(addr.String(), registrySubNet) {
+			return strings.Split(addr.String(), "/")[0]
+		}
+	}
+	return ""
 }
