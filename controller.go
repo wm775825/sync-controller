@@ -3,11 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
+	"github.com/wm775825/sync-controller/pkg/apis/serverless/v1alpha1"
 	clientset "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
 	serverlessScheme "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/scheme"
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/serverless/v1alpha1"
 	listers "github.com/wm775825/sync-controller/pkg/generated/listers/serverless/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -40,11 +45,16 @@ type Controller struct {
 	simagesSyced cache.InformerSynced
 	recorder record.EventRecorder
 	server *http.Server
+
+	dockerClient *client.Client
+	localhostAddr string
+	syncedImagesSet map[string]bool
 }
 
 func NewController(
 	kubeClientset kubernetes.Interface,
 	serverlessClientset clientset.Interface,
+	dockerClient *client.Client,
 	simageInformer informers.SimageInformer) *Controller {
 
 	// Create event broadcaster
@@ -68,6 +78,9 @@ func NewController(
 		simagesSyced: simageInformer.Informer().HasSynced,
 		recorder: recorder,
 		server: &http.Server{},
+		dockerClient: dockerClient,
+		localhostAddr: getLocalIp() + ":" + registryPort,
+		syncedImagesSet: map[string]bool{},
 	}
 
 	klog.Infof("Sync controller init.")
@@ -75,6 +88,8 @@ func NewController(
 }
 
 func (c *Controller) Run(stopCh <-chan struct{}) error {
+	defer utilruntime.HandleCrash()
+
 	klog.Info("Starting sync controller")
 
 	klog.Info("Waiting for informer caches to sync")
@@ -141,7 +156,68 @@ func (c *Controller) getRegistryUrlByImage(imageId string) string {
 }
 
 func (c *Controller) syncLocalImages() {
+	imageList, err := c.dockerClient.ImageList(context.Background(), types.ImageListOptions{})
+	if err != nil {
+		utilruntime.HandleError(err)
+	}
 
+	for _, image := range imageList{
+		imageId := image.ID
+		for _, tag := range image.RepoTags {
+			if found := c.syncedImagesSet[tag]; !found {
+				c.doSyncImage(imageId, tag)
+			}
+		}
+	}
+}
+
+func (c *Controller) doSyncImage(imageId, imageTag string) {
+	// TODO: user imageId to verify or not?
+	newTag := convertImageTag(imageTag)
+
+	// push the image to the local registry
+	if _, err := c.dockerClient.ImagePush(context.Background(), newTag, types.ImagePushOptions{}); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+
+	// notify the etcd of the image/registry info.
+	simage, err := c.simageLister.Simages(defaultNamespace).Get(imageTag)
+	if err == nil {
+		// update the Simage object
+		newSimage := simage.DeepCopy()
+		newSimage.Spec.Registries = append(newSimage.Spec.Registries, c.localhostAddr)
+		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Update(context.Background(), newSimage, metav1.UpdateOptions{}); err != nil {
+			utilruntime.HandleError(err)
+			return
+		}
+	} else if errors.IsNotFound(err) {
+		// create a new Simage object
+		newSimage := &v1alpha1.Simage{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: imageTag,
+				Namespace: defaultNamespace,
+			},
+			Spec: v1alpha1.SimageSpec {
+				Registries: []string{c.localhostAddr},
+			},
+		}
+		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Create(context.Background(), newSimage, metav1.CreateOptions{}); err != nil {
+			utilruntime.HandleError(err)
+			return
+		}
+	} else {
+		utilruntime.HandleError(err)
+		return
+	}
+
+	// update local image set
+	c.syncedImagesSet[imageTag] = true
+}
+
+func convertImageTag(imageTag string) string {
+	// TODO: how to convert the tag of image
+	return ""
 }
 
 func getLocalIp() string {
@@ -151,5 +227,6 @@ func getLocalIp() string {
 			return strings.Split(addr.String(), "/")[0]
 		}
 	}
+	// never reachable by default
 	return ""
 }
