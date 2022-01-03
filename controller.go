@@ -35,7 +35,8 @@ const (
 	registrySubNet = "192.168.1"
 	registryPort = "5000"
 	defaultNamespace = "wm775825"
-	defaultRegistryUrl = "192.168.1.141:5000"
+	defaultRegistryUrl = "docker.io"
+	defaultUserName = "library"
 )
 
 type Controller struct {
@@ -110,7 +111,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 
 func (c *Controller) listenAndServe() {
 	defer func() {
-		if err := c.server.Shutdown(context.Background()); err != nil {
+		if err := c.server.Shutdown(context.TODO()); err != nil {
 			utilruntime.HandleError(err)
 		}
 	}()
@@ -145,8 +146,6 @@ func (c *Controller) handleQuery(w http.ResponseWriter, req *http.Request) {
 func (c *Controller) getRegistryUrlByImage(imageId string) string {
 	image, err := c.simageLister.Simages(defaultNamespace).Get(imageId)
 	if err != nil {
-		// TODO: how to deal with error
-		utilruntime.HandleError(err)
 		return defaultRegistryUrl
 	}
 
@@ -156,13 +155,16 @@ func (c *Controller) getRegistryUrlByImage(imageId string) string {
 }
 
 func (c *Controller) syncLocalImages() {
-	imageList, err := c.dockerClient.ImageList(context.Background(), types.ImageListOptions{})
+	// images with <none>:<none> tag will not be returned by ImageList()
+	// however, images with <image>:<none> tag will be returned
+	imageList, err := c.dockerClient.ImageList(context.TODO(), types.ImageListOptions{})
 	if err != nil {
 		utilruntime.HandleError(err)
 	}
 
 	for _, image := range imageList{
 		imageId := image.ID
+		// We do not sync images with <image>:<none> tag
 		for _, tag := range image.RepoTags {
 			if found := c.syncedImagesSet[tag]; !found {
 				c.doSyncImage(imageId, tag)
@@ -171,23 +173,37 @@ func (c *Controller) syncLocalImages() {
 	}
 }
 
-func (c *Controller) doSyncImage(imageId, imageTag string) {
+func (c *Controller) doSyncImage(_, imageTag string) {
 	// TODO: user imageId to verify or not?
-	newTag := convertImageTag(imageTag)
+	newTag := c.convertImageTag(imageTag)
 
-	// push the image to the local registry
-	if _, err := c.dockerClient.ImagePush(context.Background(), newTag, types.ImagePushOptions{}); err != nil {
+	// 1.1 docker retag the image
+	if err := c.dockerClient.ImageTag(context.TODO(), imageTag, newTag); err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
 
-	// notify the etcd of the image/registry info.
+	// 1.2 push the image to the local registry
+	if _, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{}); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+
+	// 1.3 delete the new tag
+	defer func() {
+		_, err := c.dockerClient.ImageRemove(context.TODO(), newTag, types.ImageRemoveOptions{})
+		if err != nil {
+			utilruntime.HandleError(err)
+		}
+	}()
+
+	// 2. notify the etcd of the image/registry info.
 	simage, err := c.simageLister.Simages(defaultNamespace).Get(imageTag)
 	if err == nil {
 		// update the Simage object
 		newSimage := simage.DeepCopy()
 		newSimage.Spec.Registries = append(newSimage.Spec.Registries, c.localhostAddr)
-		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Update(context.Background(), newSimage, metav1.UpdateOptions{}); err != nil {
+		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Update(context.TODO(), newSimage, metav1.UpdateOptions{}); err != nil {
 			utilruntime.HandleError(err)
 			return
 		}
@@ -202,7 +218,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 				Registries: []string{c.localhostAddr},
 			},
 		}
-		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Create(context.Background(), newSimage, metav1.CreateOptions{}); err != nil {
+		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Create(context.TODO(), newSimage, metav1.CreateOptions{}); err != nil {
 			utilruntime.HandleError(err)
 			return
 		}
@@ -215,9 +231,30 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	c.syncedImagesSet[imageTag] = true
 }
 
-func convertImageTag(imageTag string) string {
-	// TODO: how to convert the tag of image
-	return ""
+func (c *Controller) convertImageTag(imageTag string) string {
+	// the complete format of image tag: domain/user/image:version
+	switch strings.Count(imageTag, "/") {
+	case 2:
+		// 1. domain/user/image:version
+		i := strings.IndexRune(imageTag, '/')
+		return c.localhostAddr + "/" + imageTag[i+1:]
+	case 1:
+		i := strings.IndexRune(imageTag, '/')
+		if !strings.ContainsAny(imageTag[:i], ".:") && imageTag[:i] != "localhost" {
+			// 2. user/image:version
+			return c.localhostAddr + "/" + imageTag
+		} else {
+			// 3. domain/image:version
+			return c.localhostAddr + "/" + defaultUserName + "/" + imageTag[i+1:]
+		}
+	case 0:
+		// 4. image:version
+		return c.localhostAddr + "/" + defaultUserName + "/" + imageTag
+	default:
+		// unreachable
+		// <none>:<none> images have been prefiltered
+		return ""
+	}
 }
 
 func getLocalIp() string {
