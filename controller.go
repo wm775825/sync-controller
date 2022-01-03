@@ -173,8 +173,7 @@ func (c *Controller) syncLocalImages() {
 	}
 }
 
-func (c *Controller) doSyncImage(_, imageTag string) {
-	// TODO: user imageId to verify or not?
+func (c *Controller) doSyncImage(imageId, imageTag string) {
 	newTag := c.convertImageTag(imageTag)
 
 	// 1.1 docker retag the image
@@ -200,6 +199,14 @@ func (c *Controller) doSyncImage(_, imageTag string) {
 	// 2. notify the etcd of the image/registry info.
 	simage, err := c.simageLister.Simages(defaultNamespace).Get(imageTag)
 	if err == nil {
+		// check the of the image
+		if simage.Spec.ImageId != imageId {
+			// TODO: better error info output?
+			klog.Errorf("The tag %s expected image %s, but got image %s. Manual intervention is needed.",
+				imageTag, imageId, simage.Spec.ImageId)
+			return
+		}
+
 		// update the Simage object
 		newSimage := simage.DeepCopy()
 		newSimage.Spec.Registries = append(newSimage.Spec.Registries, c.localhostAddr)
@@ -215,6 +222,7 @@ func (c *Controller) doSyncImage(_, imageTag string) {
 				Namespace: defaultNamespace,
 			},
 			Spec: v1alpha1.SimageSpec {
+				ImageId: imageId,
 				Registries: []string{c.localhostAddr},
 			},
 		}

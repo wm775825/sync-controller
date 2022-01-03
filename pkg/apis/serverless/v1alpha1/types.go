@@ -6,6 +6,7 @@ import (
 
 // SimageSpec defines the desired state of Simage
 type SimageSpec struct {
+	ImageId string `json:"imageId,omitempty"`
 	// Registries are the desired registries where simage stored.
 	Registries []string `json:"registries,omitempty"`
 	// Important: Run "make" to regenerate code after modifying this file
