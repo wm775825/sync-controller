@@ -10,6 +10,7 @@ import (
 	serverlessScheme "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/scheme"
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/serverless/v1alpha1"
 	listers "github.com/wm775825/sync-controller/pkg/generated/listers/serverless/v1alpha1"
+	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -198,10 +199,10 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		return
 	}
 	klog.Infof("dockerClient push %s to local registry\n", newTag)
-	buf := make([]byte, 1000)
-	_, _ = resp.Read(buf)
+	buf, _ := ioutil.ReadAll(resp)
 	s := string(buf)
 	klog.Infof("resp.Body is %s", s)
+	defer resp.Close()
 
 	// 1.3 delete the new tag
 	defer func() {
