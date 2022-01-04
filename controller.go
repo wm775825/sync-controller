@@ -160,6 +160,7 @@ func (c *Controller) getRegistryUrlByImage(imageId string) string {
 func (c *Controller) syncLocalImages() {
 	// images with <none>:<none> tag will not be returned by ImageList()
 	// however, images with <image>:<none> tag will be returned
+	klog.Info("----------------Start syncing local images----------------")
 	imageList, err := c.dockerClient.ImageList(context.TODO(), types.ImageListOptions{})
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -174,6 +175,7 @@ func (c *Controller) syncLocalImages() {
 			}
 		}
 	}
+	klog.Info("----------------Succeed syncing local images----------------")
 }
 
 func (c *Controller) doSyncImage(imageId, imageTag string) {
@@ -187,14 +189,16 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	klog.Infof("dockerClient retag %s to %s successfully\n", imageTag, newTag)
 
 	// 1.2 push the image to the local registry
-	if _, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
+	resp, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
 		All: true,
 		RegistryAuth: "arbitrarycodes",
-	}); err != nil {
+	})
+	if err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
 	klog.Infof("dockerClient push %s to local registry successfully\n", newTag)
+	klog.Infof("resp.Body is %s", resp)
 
 	// 1.3 delete the new tag
 	defer func() {
@@ -219,7 +223,17 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 
 		// update the Simage object
 		newSimage := simage.DeepCopy()
-		newSimage.Spec.Registries = append(newSimage.Spec.Registries, c.localhostAddr)
+		registries := newSimage.Spec.Registries
+		var flag bool
+		for _, registry := range registries {
+			if registry == c.localhostAddr {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			newSimage.Spec.Registries = append(newSimage.Spec.Registries, c.localhostAddr)
+		}
 		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Update(context.TODO(), newSimage, metav1.UpdateOptions{}); err != nil {
 			utilruntime.HandleError(err)
 			return
