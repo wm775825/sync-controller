@@ -183,7 +183,10 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	}
 
 	// 1.2 push the image to the local registry
-	if _, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{}); err != nil {
+	if _, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
+		All: true,
+		RegistryAuth: "arbitrarycodes",
+	}); err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
