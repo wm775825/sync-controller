@@ -37,6 +37,7 @@ const (
 	defaultNamespace = "wm775825"
 	defaultRegistryUrl = "docker.io"
 	defaultUserName = "library"
+	legalRunes = "1234567890abcdefghijklmnopqrstuvwxyz-."
 )
 
 type Controller struct {
@@ -200,7 +201,8 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	}()
 
 	// 2. notify the etcd of the image/registry info.
-	simage, err := c.simageLister.Simages(defaultNamespace).Get(imageTag)
+	legalImageTag := convertToLegalRunes(imageTag)
+	simage, err := c.simageLister.Simages(defaultNamespace).Get(legalImageTag)
 	if err == nil {
 		// check the of the image
 		if simage.Spec.ImageId != imageId {
@@ -221,7 +223,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		// create a new Simage object
 		newSimage := &v1alpha1.Simage{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: imageTag,
+				Name: legalImageTag,
 				Namespace: defaultNamespace,
 			},
 			Spec: v1alpha1.SimageSpec {
@@ -277,4 +279,18 @@ func getLocalIp() string {
 	}
 	// never reachable by default
 	return ""
+}
+
+func convertToLegalRunes(s string) string {
+	// We also need to make sure that s both begins and ends with alphanumeric runes.
+	// But it is an unlikely condition, so we do not take action.
+	var ret string
+	for _, r := range s {
+		if !strings.ContainsRune(legalRunes, r) {
+			ret += fmt.Sprintf("0x%d", r)
+		} else {
+			ret += string(r)
+		}
+	}
+	return ret
 }
