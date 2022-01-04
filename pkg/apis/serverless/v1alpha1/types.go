@@ -33,7 +33,7 @@ type Simage struct {
 // SimageList contains a list of Simage.
 type SimageList struct {
 	metav1.TypeMeta		`json:",inline"`
-	metav1.ObjectMeta	`json:"metadata,omitempty"`
+	metav1.ListMeta		`json:"metadata,omitempty"`
 
 	Items []Simage		`json:"items"`
 }
