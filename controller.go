@@ -198,9 +198,10 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		return
 	}
 	klog.Infof("dockerClient push %s to local registry\n", newTag)
-	var buf []byte
+	buf := make([]byte, 1000)
 	_, _ = resp.Read(buf)
-	klog.Infof("resp.Body is %s", buf)
+	s := string(buf)
+	klog.Infof("resp.Body is %s", s)
 
 	// 1.3 delete the new tag
 	defer func() {
@@ -265,7 +266,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 
 	// update local image set
 	c.syncedImagesSet[imageTag] = true
-	klog.Infof("Sync controller sync %s successfully\n", imageTag)
+	klog.Infof("Sync controller sync %s\n", imageTag)
 }
 
 func (c *Controller) convertImageTag(imageTag string) string {
