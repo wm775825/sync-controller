@@ -186,7 +186,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		utilruntime.HandleError(err)
 		return
 	}
-	klog.Infof("dockerClient retag %s to %s successfully\n", imageTag, newTag)
+	klog.Infof("dockerClient retag %s to %s\n", imageTag, newTag)
 
 	// 1.2 push the image to the local registry
 	resp, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
@@ -197,8 +197,10 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		utilruntime.HandleError(err)
 		return
 	}
-	klog.Infof("dockerClient push %s to local registry successfully\n", newTag)
-	klog.Infof("resp.Body is %s", resp)
+	klog.Infof("dockerClient push %s to local registry\n", newTag)
+	var buf []byte
+	_, _ = resp.Read(buf)
+	klog.Infof("resp.Body is %s", buf)
 
 	// 1.3 delete the new tag
 	defer func() {
@@ -206,7 +208,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		if err != nil {
 			utilruntime.HandleError(err)
 		}
-		klog.Infof("dockerClient remove tag %s successfully\n", newTag)
+		klog.Infof("dockerClient remove tag %s\n", newTag)
 	}()
 
 	// 2. notify the etcd of the image/registry info.
@@ -238,7 +240,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 			utilruntime.HandleError(err)
 			return
 		}
-		klog.Infof("simageClient update %s successfully\n", imageTag)
+		klog.Infof("simageClient update %s\n", imageTag)
 	} else if errors.IsNotFound(err) {
 		// create a new Simage object
 		newSimage := &v1alpha1.Simage{
@@ -255,7 +257,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 			utilruntime.HandleError(err)
 			return
 		}
-		klog.Infof("simageClient create %s successfully\n", imageTag)
+		klog.Infof("simageClient create %s\n", imageTag)
 	} else {
 		utilruntime.HandleError(err)
 		return
