@@ -99,6 +99,8 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
+	klog.Info("informer caches synced")
+
 	klog.Info("Start sync local images periodically")
 	go wait.Until(c.syncLocalImages, 10 * time.Second, stopCh)
 
@@ -182,6 +184,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		utilruntime.HandleError(err)
 		return
 	}
+	klog.Infof("dockerClient retag %s to %s successfully\n", imageTag, newTag)
 
 	// 1.2 push the image to the local registry
 	if _, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
@@ -191,6 +194,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		utilruntime.HandleError(err)
 		return
 	}
+	klog.Infof("dockerClient push %s to local registry successfully\n", newTag)
 
 	// 1.3 delete the new tag
 	defer func() {
@@ -198,6 +202,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		if err != nil {
 			utilruntime.HandleError(err)
 		}
+		klog.Infof("dockerClient remove tag %s successfully\n", newTag)
 	}()
 
 	// 2. notify the etcd of the image/registry info.
@@ -219,6 +224,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 			utilruntime.HandleError(err)
 			return
 		}
+		klog.Infof("simageClient update %s successfully\n", imageTag)
 	} else if errors.IsNotFound(err) {
 		// create a new Simage object
 		newSimage := &v1alpha1.Simage{
@@ -235,6 +241,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 			utilruntime.HandleError(err)
 			return
 		}
+		klog.Infof("simageClient create %s successfully\n", imageTag)
 	} else {
 		utilruntime.HandleError(err)
 		return
@@ -242,6 +249,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 
 	// update local image set
 	c.syncedImagesSet[imageTag] = true
+	klog.Infof("Sync controller sync %s successfully\n", imageTag)
 }
 
 func (c *Controller) convertImageTag(imageTag string) string {
