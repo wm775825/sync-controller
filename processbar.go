@@ -59,7 +59,7 @@ func displayResp(resp io.Reader) error {
 
 		// Check if the line is one of the final one
 		if strings.Contains(event.Status, "digest") {
-			fmt.Printf("%s\n", event.Status)
+			fmt.Printf("123%s\n", event.Status)
 			continue
 		}
 
