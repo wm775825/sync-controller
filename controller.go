@@ -176,6 +176,12 @@ func (c *Controller) syncLocalImages() {
 		imageId := image.ID
 		// We do not sync images with <image>:<none> tag
 		for _, tag := range image.RepoTags {
+			if strings.HasPrefix(tag, registrySubNet) {
+				// We do not sync images with 198.168.1.xxx:5000/<image>:<tag> tags,
+				// since these are images with <image>:<tag> tag that refer to the same underlying images,
+				// we only need to sync the latter images
+				continue
+			}
 			if found := c.syncedImagesSet[tag]; !found {
 				// images with the same tag <image-name>:latest on different nodes may be different
 				if shaMismatch := c.shaMismatchSet[tag]; shaMismatch {
@@ -238,7 +244,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 			return
 		}
 
-		// update the Simage object
+		// 2.1. update the Simage object
 		newSimage := simage.DeepCopy()
 		registries := newSimage.Spec.Registries
 		var flag bool
@@ -257,7 +263,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		}
 		klog.Infof("simageClient update %s\n", imageTag)
 	} else if errors.IsNotFound(err) {
-		// create a new Simage object
+		// 2.1. create a new Simage object
 		newSimage := &v1alpha1.Simage{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: legalImageTag,
@@ -278,7 +284,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		return
 	}
 
-	// update local image set
+	// 3. update local image set
 	c.syncedImagesSet[imageTag] = true
 	klog.Infof("Sync controller sync %s\n", imageTag)
 }
