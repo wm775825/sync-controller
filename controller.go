@@ -148,15 +148,19 @@ func (c *Controller) handleQuery(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write([]byte(registryUrl))
 }
 
-func (c *Controller) getRegistryUrlByImage(imageId string) string {
-	image, err := c.simageLister.Simages(defaultNamespace).Get(imageId)
+func (c *Controller) getRegistryUrlByImage(imageTag string) string {
+	var ret string
+	legalImageTag := convertToLegalRunes(imageTag)
+	image, err := c.simageLister.Simages(defaultNamespace).Get(legalImageTag)
 	if err != nil {
-		return defaultRegistryUrl
+		ret = defaultRegistryUrl
 	}
 
 	rand.Seed(time.Now().UnixNano())
 	registries := image.Spec.Registries
-	return registries[rand.Intn(len(registries))]
+	ret = registries[rand.Intn(len(registries))]
+	klog.Infof("Server: get registry url %s for %s\n", ret, imageTag)
+	return ret
 }
 
 func (c *Controller) syncLocalImages() {
