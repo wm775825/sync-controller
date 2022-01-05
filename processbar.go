@@ -46,7 +46,6 @@ func displayResp(resp io.Reader) error {
 	cursor := Cursor{}
 	layers := make([]string, 0)
 	prevIndex := 0
-	fmt.Printf("\n")
 	cursor.hide()
 
 	for {
@@ -59,8 +58,8 @@ func displayResp(resp io.Reader) error {
 
 		// Check if the line is one of the final one
 		if strings.Contains(event.Status, "digest") {
-			fmt.Printf("123%s\n", event.Status)
-			continue
+			fmt.Printf("%s\n", event.Status)
+			break
 		}
 
 		// Calculate which line to output
@@ -89,6 +88,8 @@ func displayResp(resp io.Reader) error {
 		cursor.clearLine()
 		if event.Status == "Pushed" {
 			fmt.Printf("%s: %s\n", event.ID, event.Status)
+		} else if event.ID == "" {
+			fmt.Printf("%s %s\n", event.Status, event.Progress)
 		} else {
 			fmt.Printf("%s: %s %s\n", event.ID, event.Status, event.Progress)
 		}
