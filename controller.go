@@ -175,7 +175,7 @@ func (c *Controller) syncLocalImages() {
 			if found := c.syncedImagesSet[tag]; !found {
 				// images with the same tag <image-name>:latest on different nodes may be different
 				if shaMismatch := c.shaMismatchSet[tag]; shaMismatch {
-					klog.Errorf("SHA256 mismatch for %s in local registry and etcd\n", tag)
+					klog.Errorf("[ERROR] SHA256 mismatch for %s in local registry and etcd\n", tag)
 				} else {
 					c.doSyncImage(imageId, tag)
 				}
