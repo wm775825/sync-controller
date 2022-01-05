@@ -10,7 +10,6 @@ import (
 	serverlessScheme "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/scheme"
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/serverless/v1alpha1"
 	listers "github.com/wm775825/sync-controller/pkg/generated/listers/serverless/v1alpha1"
-	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -190,19 +189,22 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	klog.Infof("dockerClient retag %s to %s\n", imageTag, newTag)
 
 	// 1.2 push the image to the local registry
-	resp, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
-		All: true,
-		RegistryAuth: "arbitrarycodes",
-	})
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
+	func () {
+		resp, err := c.dockerClient.ImagePush(context.TODO(), newTag, types.ImagePushOptions{
+			All: true,
+			RegistryAuth: "arbitrarycodes",
+		})
+		if err != nil {
+			utilruntime.HandleError(err)
+			return
+		}
+		if err := displayResp(resp); err != nil {
+			utilruntime.HandleError(err)
+			return
+		}
+		defer resp.Close()
+	}()
 	klog.Infof("dockerClient push %s to local registry\n", newTag)
-	buf, _ := ioutil.ReadAll(resp)
-	s := string(buf)
-	klog.Infof("resp.Body is %s", s)
-	defer resp.Close()
 
 	// 1.3 delete the new tag
 	defer func() {
