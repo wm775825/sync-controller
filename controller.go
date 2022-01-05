@@ -51,6 +51,7 @@ type Controller struct {
 	dockerClient *client.Client
 	localhostAddr string
 	syncedImagesSet map[string]bool
+	shaMismatchSet map[string]bool
 }
 
 func NewController(
@@ -83,6 +84,7 @@ func NewController(
 		dockerClient: dockerClient,
 		localhostAddr: getLocalIp() + ":" + registryPort,
 		syncedImagesSet: map[string]bool{},
+		shaMismatchSet: map[string]bool{},
 	}
 
 	klog.Infof("Sync controller init.")
@@ -171,7 +173,12 @@ func (c *Controller) syncLocalImages() {
 		// We do not sync images with <image>:<none> tag
 		for _, tag := range image.RepoTags {
 			if found := c.syncedImagesSet[tag]; !found {
-				c.doSyncImage(imageId, tag)
+				// images with the same tag <image-name>:latest on different nodes may be different
+				if shaMismatch := c.shaMismatchSet[tag]; shaMismatch {
+					klog.Errorf("SHA256 mismatch for %s in local registry and etcd\n", tag)
+				} else {
+					c.doSyncImage(imageId, tag)
+				}
 			}
 		}
 	}
@@ -221,8 +228,8 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	if err == nil {
 		// check the of the image
 		if simage.Spec.ImageId != imageId {
-			// TODO: better error info output?
-			klog.Errorf("The tag %s expected image %s, but got image %s. Manual intervention is needed.",
+			c.shaMismatchSet[imageTag] = true
+			klog.Errorf("[Error] The tag %s expected image %s, but got image %s. Manual intervention is needed.",
 				imageTag, imageId, simage.Spec.ImageId)
 			return
 		}
