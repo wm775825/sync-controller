@@ -40,6 +40,10 @@ const (
 	legalRunes = "1234567890abcdefghijklmnopqrstuvwxyz-."
 )
 
+var (
+	filterString = "openwhisk"
+)
+
 type Controller struct {
 	kubeClientset kubernetes.Interface
 	serverlessClientset clientset.Interface
@@ -182,6 +186,12 @@ func (c *Controller) syncLocalImages() {
 				// we only need to sync the latter images
 				continue
 			}
+
+			// for experiments, we only sync images of openwhisk.
+			if !strings.Contains(tag, filterString) {
+				continue
+			}
+
 			if found := c.syncedImagesSet[tag]; !found {
 				// images with the same tag <image-name>:latest on different nodes may be different
 				if shaMismatch := c.shaMismatchSet[tag]; shaMismatch {
