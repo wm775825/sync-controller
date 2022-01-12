@@ -154,11 +154,11 @@ func (c *Controller) getRegistryUrlByImage(imageTag string) string {
 	image, err := c.simageLister.Simages(defaultNamespace).Get(legalImageTag)
 	if err != nil {
 		ret = defaultRegistryUrl
+	} else {
+		rand.Seed(time.Now().UnixNano())
+		registries := image.Spec.Registries
+		ret = registries[rand.Intn(len(registries))]
 	}
-
-	rand.Seed(time.Now().UnixNano())
-	registries := image.Spec.Registries
-	ret = registries[rand.Intn(len(registries))]
 	klog.Infof("Server: get registry url %s for %s\n", ret, imageTag)
 	return ret
 }
