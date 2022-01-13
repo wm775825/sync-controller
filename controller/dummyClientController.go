@@ -13,6 +13,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"math/rand"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -56,7 +59,10 @@ func (c *dummyClientController) Run(stopCh chan struct{}) error {
 	klog.Info("Start listening and serving")
 	go wait.Until(c.dummyListenAndServe, 10 * time.Second, stopCh)
 
-	<-stopCh
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	klog.Infof("Receive signal: %v\n", <-signalCh)
+	stopCh <- struct{}{}
 	klog.Info("Shutting down sync controller")
 	return nil
 }
