@@ -171,7 +171,6 @@ func (c *controller) getRegistryUrlByImage(imageTag string) string {
 func (c *controller) syncLocalImages() {
 	// images with <none>:<none> tag will not be returned by ImageList()
 	// however, images with <image>:<none> tag will be returned
-	klog.Info("-----------------Start syncing local images-----------------")
 	imageList, err := c.dockerClient.ImageList(context.TODO(), types.ImageListOptions{})
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -203,7 +202,6 @@ func (c *controller) syncLocalImages() {
 			}
 		}
 	}
-	klog.Info("----------------Succeed syncing local images----------------")
 }
 
 func (c *controller) doSyncImage(imageId, imageTag string) {
