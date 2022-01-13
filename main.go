@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/docker/docker/client"
+	controller2 "github.com/wm775825/sync-controller/controller"
 	clientset "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -52,7 +53,7 @@ func main() {
 		klog.Fatalf("Error building docker client: %s", err.Error())
 	}
 
-	controller := NewController(kubeClient, serverlessClient, dockerClient,
+	controller := controller2.NewController(kubeClient, serverlessClient, dockerClient,
 		simageInformerFactory.Serverless().V1alpha1().Simages())
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go simageInformerFactory.Start(stopCh))

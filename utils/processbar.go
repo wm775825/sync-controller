@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"encoding/json"
@@ -39,7 +39,7 @@ type pushEvent struct {
 	}	`json:"progressDetail"`
 }
 
-func displayResp(resp io.Reader) error {
+func DisplayResp(resp io.Reader) error {
 	var event *pushEvent
 	decoder := json.NewDecoder(resp)
 

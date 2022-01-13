@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	serverlessScheme "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned/scheme"
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/serverless/v1alpha1"
 	listers "github.com/wm775825/sync-controller/pkg/generated/listers/serverless/v1alpha1"
+	"github.com/wm775825/sync-controller/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,16 +80,16 @@ func NewController(
 	})
 
 	controller := &Controller{
-		kubeClientset: kubeClientset,
+		kubeClientset:       kubeClientset,
 		serverlessClientset: serverlessClientset,
-		simageLister: simageInformer.Lister(),
-		simagesSyced: simageInformer.Informer().HasSynced,
-		recorder: recorder,
-		server: &http.Server{},
-		dockerClient: dockerClient,
-		localhostAddr: getLocalIp() + ":" + registryPort,
-		syncedImagesSet: map[string]bool{},
-		shaMismatchSet: map[string]bool{},
+		simageLister:        simageInformer.Lister(),
+		simagesSyced:        simageInformer.Informer().HasSynced,
+		recorder:            recorder,
+		server:              &http.Server{},
+		dockerClient:        dockerClient,
+		localhostAddr:       getLocalIp() + ":" + registryPort,
+		syncedImagesSet:     map[string]bool{},
+		shaMismatchSet:      map[string]bool{},
 	}
 
 	klog.Infof("Sync controller init.")
@@ -135,7 +136,7 @@ func (c *Controller) listenAndServe() {
 
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{
 		Name: unixSock,
-		Net: "unix",
+		Net:  "unix",
 	})
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -225,7 +226,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 			utilruntime.HandleError(err)
 			return
 		}
-		if err := displayResp(resp); err != nil {
+		if err := utils.DisplayResp(resp); err != nil {
 			utilruntime.HandleError(err)
 			return
 		}
@@ -276,7 +277,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 		// 2.1. create a new Simage object
 		newSimage := &v1alpha1.Simage{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: legalImageTag,
+				Name:      legalImageTag,
 				Namespace: defaultNamespace,
 			},
 			Spec: v1alpha1.SimageSpec {
