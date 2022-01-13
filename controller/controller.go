@@ -45,7 +45,7 @@ var (
 	filterString = "openwhisk"
 )
 
-type Controller struct {
+type controller struct {
 	kubeClientset kubernetes.Interface
 	serverlessClientset clientset.Interface
 	simageLister listers.SimageLister
@@ -63,7 +63,7 @@ func NewController(
 	kubeClientset kubernetes.Interface,
 	serverlessClientset clientset.Interface,
 	dockerClient *client.Client,
-	simageInformer informers.SimageInformer) *Controller {
+	simageInformer informers.SimageInformer) *controller {
 
 	// Create event broadcaster
 	// Add serverless-controller types to the default Kubernetes Scheme so Events can be
@@ -79,7 +79,7 @@ func NewController(
 		Component: controllerAgentName,
 	})
 
-	controller := &Controller{
+	controller := &controller{
 		kubeClientset:       kubeClientset,
 		serverlessClientset: serverlessClientset,
 		simageLister:        simageInformer.Lister(),
@@ -96,7 +96,7 @@ func NewController(
 	return controller
 }
 
-func (c *Controller) Run(stopCh <-chan struct{}) error {
+func (c *controller) Run(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 
 	klog.Info("Starting sync controller")
@@ -119,7 +119,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 	return nil
 }
 
-func (c *Controller) listenAndServe() {
+func (c *controller) listenAndServe() {
 	defer func() {
 		if err := c.server.Shutdown(context.TODO()); err != nil {
 			utilruntime.HandleError(err)
@@ -147,13 +147,13 @@ func (c *Controller) listenAndServe() {
 	}
 }
 
-func (c *Controller) handleQuery(w http.ResponseWriter, req *http.Request) {
+func (c *controller) handleQuery(w http.ResponseWriter, req *http.Request) {
 	registryUrl := c.getRegistryUrlByImage(req.URL.Path[1:])
 	w.WriteHeader(200)
 	_, _ = w.Write([]byte(registryUrl))
 }
 
-func (c *Controller) getRegistryUrlByImage(imageTag string) string {
+func (c *controller) getRegistryUrlByImage(imageTag string) string {
 	var ret string
 	legalImageTag := convertToLegalRunes(imageTag)
 	image, err := c.simageLister.Simages(defaultNamespace).Get(legalImageTag)
@@ -168,7 +168,7 @@ func (c *Controller) getRegistryUrlByImage(imageTag string) string {
 	return ret
 }
 
-func (c *Controller) syncLocalImages() {
+func (c *controller) syncLocalImages() {
 	// images with <none>:<none> tag will not be returned by ImageList()
 	// however, images with <image>:<none> tag will be returned
 	klog.Info("-----------------Start syncing local images-----------------")
@@ -206,7 +206,7 @@ func (c *Controller) syncLocalImages() {
 	klog.Info("----------------Succeed syncing local images----------------")
 }
 
-func (c *Controller) doSyncImage(imageId, imageTag string) {
+func (c *controller) doSyncImage(imageId, imageTag string) {
 	newTag := c.convertImageTag(imageTag)
 
 	// 1.1 docker retag the image
@@ -300,7 +300,7 @@ func (c *Controller) doSyncImage(imageId, imageTag string) {
 	klog.Infof("Sync controller sync %s\n", imageTag)
 }
 
-func (c *Controller) convertImageTag(imageTag string) string {
+func (c *controller) convertImageTag(imageTag string) string {
 	// the complete format of image tag: domain/user/image:version
 	switch strings.Count(imageTag, "/") {
 	case 2:

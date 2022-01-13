@@ -19,11 +19,15 @@ import (
 var (
 	kubeconfig string
 	masterURL string
+	dummy bool
+	dummyImageTag string
 )
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", defaultKubeconfig(), "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.BoolVar(&dummy, "dummy", false, "Run dummy controller or real controller.")
+	flag.StringVar(&dummyImageTag, "tag","openwhisk/action-python-v3.7:1.17.0", "dummy image tag used by dummy controller.")
 
 	klog.InitFlags(nil)
 
@@ -48,13 +52,18 @@ func main() {
 	}
 	simageInformerFactory := informers.NewSharedInformerFactory(serverlessClient, time.Minute * 10)
 
-	dockerClient, err := client.NewClientWithOpts()
-	if err != nil {
-		klog.Fatalf("Error building docker client: %s", err.Error())
+	var controller controller2.Controller
+	if !dummy {
+		dockerClient, err := client.NewClientWithOpts()
+		if err != nil {
+			klog.Fatalf("Error building docker client: %s", err.Error())
+		}
+		controller = controller2.NewController(kubeClient, serverlessClient, dockerClient,
+			simageInformerFactory.Serverless().V1alpha1().Simages())
+	} else {
+		controller = controller2.NewDummyClientController(kubeClient, serverlessClient,
+			simageInformerFactory.Serverless().V1alpha1().Simages(), dummyImageTag)
 	}
-
-	controller := controller2.NewController(kubeClient, serverlessClient, dockerClient,
-		simageInformerFactory.Serverless().V1alpha1().Simages())
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go simageInformerFactory.Start(stopCh))
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
