@@ -118,9 +118,9 @@ func (c *controller) Run(stopCh chan struct{}) error {
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGHUP)
-	klog.Infof("Receive signal: %v\n", <-signalCh)
 	for {
 		s := <-signalCh
+		klog.Infof("Receive signal: %v\n", s)
 		if s != syscall.SIGHUP {
 			break
 		}
