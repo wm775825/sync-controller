@@ -42,7 +42,7 @@ func NewDummyClientController(kubeClientset kubernetes.Interface,
 	}
 }
 
-func (c *dummyClientController) Run(stopCh chan struct{}) error {
+func (c *dummyClientController) Run(stopCh chan struct{}, sync bool) error {
 	defer utilruntime.HandleCrash()
 
 	klog.Info("Starting sync controller")
@@ -53,8 +53,10 @@ func (c *dummyClientController) Run(stopCh chan struct{}) error {
 	}
 	klog.Info("informer caches synced")
 
-	klog.Info("Start sync local images periodically")
-	go wait.Until(c.dummySyncLocalImages, 10 * time.Second, stopCh)
+	if sync {
+		klog.Info("Start sync local images periodically")
+		go wait.Until(c.dummySyncLocalImages, 10 * time.Second, stopCh)
+	}
 
 	klog.Info("Start listening and serving")
 	go wait.Until(c.dummyListenAndServe, 10 * time.Second, stopCh)

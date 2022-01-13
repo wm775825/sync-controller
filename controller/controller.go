@@ -98,7 +98,7 @@ func NewController(
 	return controller
 }
 
-func (c *controller) Run(stopCh chan struct{}) error {
+func (c *controller) Run(stopCh chan struct{}, sync bool) error {
 	defer utilruntime.HandleCrash()
 
 	klog.Info("Starting sync controller")
@@ -110,8 +110,10 @@ func (c *controller) Run(stopCh chan struct{}) error {
 
 	klog.Info("informer caches synced")
 
-	klog.Info("Start sync local images periodically")
-	go wait.Until(c.syncLocalImages, 10 * time.Second, stopCh)
+	if sync {
+		klog.Info("Start sync local images periodically")
+		go wait.Until(c.syncLocalImages, 10 * time.Second, stopCh)
+	}
 
 	klog.Info("Start listening and serving")
 	go wait.Until(c.listenAndServe, 10 * time.Second, stopCh)

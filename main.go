@@ -20,6 +20,7 @@ var (
 	masterURL string
 	dummy bool
 	dummyImageTag string
+	sync bool
 )
 
 func main() {
@@ -27,6 +28,12 @@ func main() {
 	flag.StringVar(&masterURL, "master", "https://192.168.1.116:6443", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&dummy, "dummy", false, "Run dummy controller or real controller.")
 	flag.StringVar(&dummyImageTag, "tag","openwhisk/action-python-v3.7:1.17.0", "dummy image tag used by dummy controller.")
+
+	// It's better to decouple sync and server for design but not for convenience.
+	// So we build them together in one process.
+	// Syncing local images will make changes to the machine and etcd, so we provide an option about whether to open it.
+	// Server will not make changes, so we open it by default.
+	flag.BoolVar(&sync, "sync", true, "Open syncing local images or not.")
 
 	klog.InitFlags(nil)
 
@@ -69,7 +76,7 @@ func main() {
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 	simageInformerFactory.Start(stopCh)
 
-	if err = controller.Run(stopCh); err != nil {
+	if err = controller.Run(stopCh, sync); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
 	}
 	close(stopCh)
