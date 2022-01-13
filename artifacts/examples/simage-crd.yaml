@@ -4,7 +4,10 @@ metadata:
   name: simages.serverless.wm775825.info
 spec:
   group: serverless.wm775825.info
-  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
   names:
     kind: Simage
     plural: simages
