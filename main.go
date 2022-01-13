@@ -26,7 +26,7 @@ var (
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", defaultKubeconfig(), "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "https://192.168.1.116:6443", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&dummy, "dummy", false, "Run dummy controller or real controller.")
 	flag.StringVar(&dummyImageTag, "tag","openwhisk/action-python-v3.7:1.17.0", "dummy image tag used by dummy controller.")
 
