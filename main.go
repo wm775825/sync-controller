@@ -6,13 +6,14 @@ import (
 	controller2 "github.com/wm775825/sync-controller/controller"
 	clientset "github.com/wm775825/sync-controller/pkg/generated/clientset/versioned"
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -65,13 +66,22 @@ func main() {
 			simageInformerFactory.Serverless().V1alpha1().Simages(), dummyImageTag)
 	}
 
+	stopCh := make(chan struct{})
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	go func() {
+		<-signalCh
+		stopCh <- struct{}{}
+	}()
+
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go simageInformerFactory.Start(stopCh))
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	simageInformerFactory.Start(wait.NeverStop)
+	simageInformerFactory.Start(stopCh)
 
-	if err = controller.Run(wait.NeverStop); err != nil {
+	if err = controller.Run(stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
 	}
+	close(stopCh)
 }
 
 func defaultKubeconfig() string {
