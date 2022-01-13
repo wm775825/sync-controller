@@ -39,7 +39,7 @@ func NewDummyClientController(kubeClientset kubernetes.Interface,
 	}
 }
 
-func (c *dummyClientController) Run(stopCh <-chan struct{}) error {
+func (c *dummyClientController) Run(stopCh chan struct{}) error {
 	defer utilruntime.HandleCrash()
 
 	klog.Info("Starting sync controller")

@@ -26,7 +26,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -96,7 +98,7 @@ func NewController(
 	return controller
 }
 
-func (c *controller) Run(stopCh <-chan struct{}) error {
+func (c *controller) Run(stopCh chan struct{}) error {
 	defer utilruntime.HandleCrash()
 
 	klog.Info("Starting sync controller")
@@ -114,7 +116,10 @@ func (c *controller) Run(stopCh <-chan struct{}) error {
 	klog.Info("Start listening and serving")
 	go wait.Until(c.listenAndServe, 10 * time.Second, stopCh)
 
-	<-stopCh
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	klog.Infof("Receive signal: %v\n", <-signalCh)
+	stopCh <- struct{}{}
 	klog.Info("Shutting down sync controller")
 	return nil
 }

@@ -11,9 +11,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -67,13 +65,6 @@ func main() {
 	}
 
 	stopCh := make(chan struct{})
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
-	go func() {
-		<-signalCh
-		stopCh <- struct{}{}
-	}()
-
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go simageInformerFactory.Start(stopCh))
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 	simageInformerFactory.Start(stopCh)

@@ -1,5 +1,5 @@
 package controller
 
 type Controller interface {
-	Run(stopCh <-chan struct{}) error
+	Run(stopCh chan struct{}) error
 }
