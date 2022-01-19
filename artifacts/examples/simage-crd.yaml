@@ -25,7 +25,7 @@ spec:
                     url:
                       type: string
                     weight:
-                      type: int
+                      type: integer
   names:
     kind: Simage
     plural: simages
