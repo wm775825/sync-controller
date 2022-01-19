@@ -20,7 +20,12 @@ spec:
               registries:
                 type: array
                 items:
-                  type: string
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    weight:
+                      type: int
   names:
     kind: Simage
     plural: simages

@@ -7,8 +7,10 @@ metadata:
 spec:
   imageId: "sha256@123456789"
   registries:
-    - "192.168.1.141:5000"
-    - "192.168.1.117:5000"
+    - url: "192.168.1.141:5000"
+      weight: 1
+    - url: "192.168.1.117:5000"
+      weight: 1
 
   # TODO: optional specs
 #  sha256: "123456789"

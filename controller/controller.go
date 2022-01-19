@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -173,9 +174,8 @@ func (c *controller) getRegistryUrlByImage(imageTag string) string {
 	if err != nil {
 		ret = defaultRegistryUrl
 	} else {
-		rand.Seed(time.Now().UnixNano())
 		registries := image.Spec.Registries
-		ret = registries[rand.Intn(len(registries))]
+		ret = getRandomURL(registries)
 	}
 	klog.Infof("Server: get registry url %s for %s\n", ret, imageTag)
 	return ret
@@ -271,13 +271,14 @@ func (c *controller) doSyncImage(imageId, imageTag string) {
 		registries := newSimage.Spec.Registries
 		var flag bool
 		for _, registry := range registries {
-			if registry == c.localhostAddr {
+			if registry.URL == c.localhostAddr {
 				flag = true
 				break
 			}
 		}
 		if !flag {
-			newSimage.Spec.Registries = append(newSimage.Spec.Registries, c.localhostAddr)
+			newSimage.Spec.Registries = append(newSimage.Spec.Registries,
+				v1alpha1.Registry{URL: c.localhostAddr, Weight: 1})
 		}
 		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Update(context.TODO(), newSimage, metav1.UpdateOptions{}); err != nil {
 			utilruntime.HandleError(err)
@@ -293,7 +294,9 @@ func (c *controller) doSyncImage(imageId, imageTag string) {
 			},
 			Spec: v1alpha1.SimageSpec {
 				ImageId: imageId,
-				Registries: []string{c.localhostAddr},
+				Registries: []v1alpha1.Registry{
+					{URL: c.localhostAddr, Weight: 1},
+				},
 			},
 		}
 		if _, err := c.serverlessClientset.ServerlessV1alpha1().Simages(defaultNamespace).Create(context.TODO(), newSimage, metav1.CreateOptions{}); err != nil {
@@ -360,4 +363,20 @@ func convertToLegalRunes(s string) string {
 		}
 	}
 	return ret
+}
+
+func getRandomURL(registries []v1alpha1.Registry) string {
+	n := len(registries)
+	weights := make([]int, n)
+	for i, r := range registries {
+		if i == 0 {
+			weights[i] = r.Weight
+		} else {
+			weights[i] = weights[i-1] + r.Weight
+		}
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	randomResult := rand.Intn(weights[n-1])
+	return registries[sort.Search(n, func(i int) bool { return weights[i] > randomResult })].URL
 }

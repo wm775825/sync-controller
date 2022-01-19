@@ -95,9 +95,8 @@ func (c *dummyClientController) dummyListenAndServe() {
 	if err != nil {
 		ret = defaultRegistryUrl
 	} else {
-		rand.Seed(time.Now().UnixNano())
 		registries := image.Spec.Registries
-		ret = registries[rand.Intn(len(registries))]
+		ret = getRandomURL(registries)
 	}
 	klog.Infof("Server: get registry url %s for %s\n", ret, c.testImageTag)
 }
