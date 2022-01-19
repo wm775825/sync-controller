@@ -11,6 +11,7 @@ import (
 	informers "github.com/wm775825/sync-controller/pkg/generated/informers/externalversions/serverless/v1alpha1"
 	listers "github.com/wm775825/sync-controller/pkg/generated/listers/serverless/v1alpha1"
 	"github.com/wm775825/sync-controller/utils"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,9 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -48,6 +51,7 @@ var (
 	filterString = "openwhisk"
 )
 
+// TODO: decouple syncer, prefetcher and router
 type controller struct {
 	kubeClientset kubernetes.Interface
 	serverlessClientset clientset.Interface
@@ -55,6 +59,15 @@ type controller struct {
 	simagesSyced cache.InformerSynced
 	recorder record.EventRecorder
 	server *http.Server
+
+	sfunctionLister listers.SfunctionLister
+	sfunctionsSyced cache.InformerSynced
+	// workqueue is a rate limited work queue. This is used to queue work to be
+	// processed instead of performing it as soon as a change happens. This
+	// means we can ensure we only process a fixed amount of resources at a
+	// time, and makes it easy to ensure we are never processing the same item
+	// simultaneously in two different workers.
+	workqueue workqueue.RateLimitingInterface
 
 	dockerClient *client.Client
 	localhostAddr string
@@ -66,7 +79,8 @@ func NewController(
 	kubeClientset kubernetes.Interface,
 	serverlessClientset clientset.Interface,
 	dockerClient *client.Client,
-	simageInformer informers.SimageInformer) *controller {
+	simageInformer informers.SimageInformer,
+	sfunctionInformer informers.SfunctionInformer) *controller {
 
 	// Create event broadcaster
 	// Add serverless-controller types to the default Kubernetes Scheme so Events can be
@@ -89,11 +103,18 @@ func NewController(
 		simagesSyced:        simageInformer.Informer().HasSynced,
 		recorder:            recorder,
 		server:              &http.Server{},
+		sfunctionLister: 	 sfunctionInformer.Lister(),
+		sfunctionsSyced:     sfunctionInformer.Informer().HasSynced,
+		workqueue:           workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Sfunctions"),
 		dockerClient:        dockerClient,
 		localhostAddr:       getLocalIp() + ":" + registryPort,
 		syncedImagesSet:     map[string]bool{},
 		shaMismatchSet:      map[string]bool{},
 	}
+
+	sfunctionInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.enqueueSfunction,
+	})
 
 	klog.Infof("Sync controller init.")
 	return controller
@@ -101,12 +122,18 @@ func NewController(
 
 func (c *controller) Run(stopCh chan struct{}, sync bool) error {
 	defer utilruntime.HandleCrash()
+	defer c.workqueue.ShutDown()
 
 	klog.Info("Starting sync controller")
 
-	klog.Info("Waiting for informer caches to sync")
+	klog.Info("Waiting for simage caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.simagesSyced); !ok {
-		return fmt.Errorf("failed to wait for caches to sync")
+		return fmt.Errorf("failed to wait for simage caches to sync")
+	}
+
+	klog.Info("Waiting for sfunction caches to sync")
+	if ok := cache.WaitForCacheSync(stopCh, c.sfunctionsSyced); !ok {
+		return fmt.Errorf("failed to wait for sfunction caches to sync")
 	}
 
 	klog.Info("informer caches synced")
@@ -115,6 +142,9 @@ func (c *controller) Run(stopCh chan struct{}, sync bool) error {
 		klog.Info("Start sync local images periodically")
 		go wait.Until(c.syncLocalImages, 10 * time.Second, stopCh)
 	}
+
+	klog.Info("Start listening and prefetching images")
+	go wait.Until(c.listenAndPrefetch, 10 * time.Minute, stopCh)
 
 	klog.Info("Start listening and serving")
 	go wait.Until(c.listenAndServe, 10 * time.Second, stopCh)
@@ -131,6 +161,124 @@ func (c *controller) Run(stopCh chan struct{}, sync bool) error {
 	stopCh <- struct{}{}
 	klog.Info("Shutting down sync controller")
 	return nil
+}
+
+func (c *controller) listenAndPrefetch() {
+	for c.processNextWorkItem() {
+	}
+}
+
+func (c *controller) processNextWorkItem() bool {
+	obj, shutdown := c.workqueue.Get()
+	if shutdown {
+		return false
+	}
+
+	err := func(obj interface{}) error {
+		// We call Done here so the workqueue knows we have finished
+		// processing this item. We also must remember to call Forget if we
+		// do not want this work item being re-queued. For example, we do
+		// not call Forget if a transient error occurs, instead the item is
+		// put back on the workqueue and attempted again after a back-off
+		// period.
+		defer c.workqueue.Done(obj)
+		var key string
+		var ok bool
+		// We expect strings to come off the workqueue. These are of the
+		// form namespace/name. We do this as the delayed nature of the
+		// workqueue means the items in the informer cache may actually be
+		// more up to date that when the item was initially put onto the
+		// workqueue.
+		if key, ok = obj.(string); !ok {
+			// As the item in the workqueue is actually invalid, we call
+			// Forget here else we'd go into a loop of attempting to
+			// process a work item that is invalid.
+			c.workqueue.Forget(obj)
+			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
+			return nil
+		}
+		if requeue, err := c.prefetch(key); err != nil {
+			return fmt.Errorf("error prefetching '%s': %s", key, err.Error())
+		} else if requeue {
+			// Put the item back on the workqueue to handle any transient errors.
+			c.workqueue.AddRateLimited(key)
+		} else {
+			c.workqueue.Forget(obj)
+		}
+		klog.Infof("Successfully synced '%s'", key)
+		return nil
+	}(obj)
+
+	if err != nil {
+		utilruntime.HandleError(err)
+		return true
+	}
+	return true
+}
+
+func (c *controller) prefetch(key string) (bool, error) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return false, fmt.Errorf("invalid resource key: %s", key)
+	}
+
+	sfunction, err := c.sfunctionLister.Sfunctions(namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, fmt.Errorf("sfunction '%s' in workqueue no longer exists", key)
+		}
+		return false, err
+	}
+
+	prefetchFunc := sfunction.Spec.PrefetchFunc
+	var fetch bool
+	switch prefetchFunc {
+	case "log":
+		nodes, err := c.kubeClientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return true, nil
+		}
+		n := float64(len(nodes.Items))
+		rand.Seed(time.Now().UnixNano())
+		fetch = rand.Float64() < math.Log2(n) / n
+	default:
+		return false, fmt.Errorf("wrong prefetch func %s in sfunction '%s'", prefetchFunc, key)
+	}
+
+	if fetch {
+		return func() (requeue bool, err error) {
+			// TODO: moby part:
+			// TODO: 	need to deal with images with "docker.io/" prefix.
+			// TODO: 	there is no need to re communicate with self.
+			requeue = false
+			image := "docker.io/" + sfunction.Spec.Image
+			resp, err := c.dockerClient.ImagePull(context.TODO(), image, types.ImagePullOptions{
+				All:          true,
+				RegistryAuth: "arbitrarycodes",
+			})
+			if err != nil {
+				requeue = true
+				err = nil
+			}
+			defer func(resp io.ReadCloser) {
+				err = resp.Close()
+				requeue = err != nil
+				err = nil
+			}(resp)
+			return
+		}()
+	}
+	return false, nil
+}
+
+func (c *controller) enqueueSfunction(obj interface{}){
+	var key string
+	var err error
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	c.workqueue.Add(key)
 }
 
 func (c *controller) listenAndServe() {

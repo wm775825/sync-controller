@@ -56,7 +56,7 @@ func main() {
 	if err != nil {
 		klog.Fatalf("Error building serverless clientset: %s", err.Error())
 	}
-	simageInformerFactory := informers.NewSharedInformerFactory(serverlessClient, time.Minute * 10)
+	serverlessInformerFactory := informers.NewSharedInformerFactory(serverlessClient, time.Minute * 10)
 
 	var controller controller2.Controller
 	if !dummy {
@@ -65,16 +65,17 @@ func main() {
 			klog.Fatalf("Error building docker client: %s", err.Error())
 		}
 		controller = controller2.NewController(kubeClient, serverlessClient, dockerClient,
-			simageInformerFactory.Serverless().V1alpha1().Simages())
+			serverlessInformerFactory.Serverless().V1alpha1().Simages(),
+			serverlessInformerFactory.Serverless().V1alpha1().Sfunctions())
 	} else {
 		controller = controller2.NewDummyClientController(kubeClient, serverlessClient,
-			simageInformerFactory.Serverless().V1alpha1().Simages(), dummyImageTag)
+			serverlessInformerFactory.Serverless().V1alpha1().Simages(), dummyImageTag)
 	}
 
 	stopCh := make(chan struct{})
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go simageInformerFactory.Start(stopCh))
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	simageInformerFactory.Start(stopCh)
+	serverlessInformerFactory.Start(stopCh)
 
 	if err = controller.Run(stopCh, sync); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
