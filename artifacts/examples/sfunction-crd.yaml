@@ -1,0 +1,30 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sfunctions.serverless.wm775825.info
+spec:
+  group: serverless.wm775825.info
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  type: string
+                image:
+                  type: string
+                prefetchFunc:
+                  type: string
+  names:
+    kind: Sfunction
+    plural: sfunctions
+    singular: sfunction
+    shortNames:
+      - sf
+  scope: Namespaced

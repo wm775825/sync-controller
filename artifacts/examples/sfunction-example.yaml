@@ -1,0 +1,10 @@
+apiVersion: serverless.wm775825.info/v1alpha1
+kind: Sfunction
+metadata:
+  name: sf-example-serverless
+  labels:
+    app: serverless
+spec:
+  name: "python-hello-world"
+  image: "openwhisk/action-python-v3.7:1.17.0"
+  prefetchFunc: "log"
