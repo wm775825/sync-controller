@@ -15,5 +15,10 @@ prop: build
 	scp ./${APP} ${USER}@${NODE4}:${REMOTEDIR}
 	scp ./${APP} ${USER}@${NODE5}:${REMOTEDIR}
 
+run: build
+	# if not need sync
+	# ./{APP} --sync=false > /tmp/sync.log 2>&1 &
+	./{APP} > /tmp/sync.log 2>&1 &
+
 clean:
 	rm ./${APP}
