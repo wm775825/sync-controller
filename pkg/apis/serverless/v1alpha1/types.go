@@ -43,3 +43,34 @@ type SimageList struct {
 	Items []Simage		`json:"items"`
 }
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Sfunction represents a function.
+type Sfunction struct {
+	metav1.TypeMeta			`json:",inline"`
+	metav1.ObjectMeta		`json:"metadata,omitempty"`
+
+	Spec SFunctionSpec		`json:"spec,omitempty"`
+	Status SFunctionStatus	`json:"status,omitempty"`
+}
+
+// SFunctionSpec defines the desired state of Sfunction
+type SFunctionSpec struct {
+	Name string			`json:"name,omitempty"`
+	Image string		`json:"image,omitempty"`
+	PrefetchFunc string	`json:"prefetchFunc,omitempty"`
+}
+
+type SFunctionStatus struct {}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// SfunctionList contains a list of Sfunction.
+type SfunctionList struct {
+	metav1.TypeMeta		`json:",inline"`
+	metav1.ListMeta		`json:"metadata,omitempty"`
+
+	Items []Sfunction	`json:"items"`
+}
+

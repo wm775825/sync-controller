@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// Sfunctions returns a SfunctionInformer.
+	Sfunctions() SfunctionInformer
 	// Simages returns a SimageInformer.
 	Simages() SimageInformer
 }
@@ -37,6 +39,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// Sfunctions returns a SfunctionInformer.
+func (v *version) Sfunctions() SfunctionInformer {
+	return &sfunctionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Simages returns a SimageInformer.

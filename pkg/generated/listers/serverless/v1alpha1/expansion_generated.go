@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
+// SfunctionListerExpansion allows custom methods to be added to
+// SfunctionLister.
+type SfunctionListerExpansion interface{}
+
+// SfunctionNamespaceListerExpansion allows custom methods to be added to
+// SfunctionNamespaceLister.
+type SfunctionNamespaceListerExpansion interface{}
+
 // SimageListerExpansion allows custom methods to be added to
 // SimageLister.
 type SimageListerExpansion interface{}

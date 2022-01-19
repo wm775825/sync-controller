@@ -26,12 +26,17 @@ import (
 
 type ServerlessV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	SfunctionsGetter
 	SimagesGetter
 }
 
 // ServerlessV1alpha1Client is used to interact with features provided by the serverless.wm775825.info group.
 type ServerlessV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *ServerlessV1alpha1Client) Sfunctions(namespace string) SfunctionInterface {
+	return newSfunctions(c, namespace)
 }
 
 func (c *ServerlessV1alpha1Client) Simages(namespace string) SimageInterface {

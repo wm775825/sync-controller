@@ -28,6 +28,10 @@ type FakeServerlessV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeServerlessV1alpha1) Sfunctions(namespace string) v1alpha1.SfunctionInterface {
+	return &FakeSfunctions{c, namespace}
+}
+
 func (c *FakeServerlessV1alpha1) Simages(namespace string) v1alpha1.SimageInterface {
 	return &FakeSimages{c, namespace}
 }
