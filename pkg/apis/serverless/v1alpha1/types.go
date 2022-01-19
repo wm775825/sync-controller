@@ -4,11 +4,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type Registry struct {
+	URL    string `json:"url,omitempty"`
+	Weight int    `json:"weight,omitempty"`
+}
+
 // SimageSpec defines the desired state of Simage
 type SimageSpec struct {
 	ImageId string `json:"imageId,omitempty"`
 	// Registries are the desired registries where simage stored.
-	Registries []string `json:"registries,omitempty"`
+	Registries []Registry `json:"registries,omitempty"`
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
@@ -37,3 +42,4 @@ type SimageList struct {
 
 	Items []Simage		`json:"items"`
 }
+
